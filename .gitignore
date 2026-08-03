@@ -1,0 +1,21 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# firmwares : a recuperer chez leurs auteurs, pas dans le depot
+*.zip
+*.hex
+*.uf2
+*.bin
+
+# fichiers locaux
+*.log
+.env
+*.pcap
+*.pcapng
+*.pem
+*.key
+*.der
+*.jlink
+.vscode/
