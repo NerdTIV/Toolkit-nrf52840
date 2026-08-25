@@ -57,6 +57,19 @@ the Adafruit bootloader. This one cannot parse them, answers nothing, and the
 flash dies on `OP_SELECT` with no error worth reading. See
 [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for how to tell the two apart.
 
+If the `nrfutil` command is unusable — installing `adafruit-nrfutil` next to
+`pc-nrfutil` overwrites its CLI, and then `nrfutil version` answers
+`adafruit-nrfutil` — use `mkpkg_v2.py` from this repo instead. It calls the
+pc-nrfutil modules directly, so a broken command line does not matter :
+
+```bash
+pip install ecdsa nrfutil
+python3 mkpkg_v2.py app.hex firmware.zip
+```
+
+It takes a `.hex` or a `.bin`, generates a signing key on first run and reuses
+it after. Same output as `nrfutil pkg generate`.
+
 ## How it works
 
 Nordic DFU protocol, version 2:
@@ -89,6 +102,7 @@ here.
 ## Files
 
 - `flash_nrf52840.py`: the flasher
+- `mkpkg_v2.py`: builds the DFU v2 package the bootloader expects
 - `check_dongle.sh`: shows the dongle state (bootloader, sniffer, HCI, CircuitPython)
 
 ## When it does not work

@@ -13,7 +13,7 @@ move to Zephyr when you need to tune the BLE stack (MTU, intervals, SMP).
 ## Install
 
 ```bash
-pip install pyusb pyserial
+pip install pyusb pyserial ecdsa
 ```
 
 ## Usage
@@ -37,6 +37,10 @@ nrfutil pkg generate --hw-version 52 --sd-req 0x00 \
 
 sudo python3 nrf52840-flasher/flash_nrf52840.py firmware.zip
 ```
+
+If `nrfutil` misbehaves — installing `adafruit-nrfutil` next to it overwrites
+its command line — `nrf52840-flasher/mkpkg_v2.py` builds the same package
+without going through the CLI.
 
 If you would rather not build a package at all, **nRF Connect Programmer**
 takes the `.hex` directly and does it for you. Turn *Auto read memory* off
