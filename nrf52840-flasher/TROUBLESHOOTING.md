@@ -97,6 +97,30 @@ Advertising successfully started
 Open the port after the boot and you get nothing at all, which looks exactly
 like dead firmware. It is not, you just missed the banner.
 
+## The CRC never comes back on the first firmware segment
+
+The DFU transfer goes : select the object, create it, write it in small
+chunks, ask for a CRC, execute. On this bootloader the init packet object
+goes through every time. The first firmware segment does not : the writes
+all go out, then `CALC_CRC` is never answered and the flash stops there.
+
+What I tried, none of it changed anything :
+
+- two different exchange implementations, one of them getting all the way
+  through the init packet object
+- write intervals of 4 ms and of 20 ms
+- draining the pending answers before asking for the CRC
+
+The difference between the two objects is the number of writes. The init
+packet is 134 bytes, so 7 chunks of 20. A firmware segment is 4096 bytes, so
+205. Somewhere past that the bootloader stops answering, and I have not
+found what makes it stop.
+
+The dongle itself is fine : the same firmware, the same package, goes
+through **nRF Connect Programmer** without a hitch and the dongle comes back
+in `hci_usb`. So if you hit this wall, do not spend your evening on it like I
+did, use the Programmer.
+
 ## "Advertising successfully started" and nobody sees it
 
 That line means the host stack accepted the request. It does not mean anything
