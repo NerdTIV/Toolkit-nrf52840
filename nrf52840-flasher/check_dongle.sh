@@ -1,8 +1,4 @@
 #!/usr/bin/env bash
-# Tells in which mode the plugged nRF52840 dongle is.
-# Il lit le VID:PID dans lsusb et dit quoi faire apres.
-#
-# Usage : bash check_dongle.sh
 
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -28,9 +24,15 @@ elif echo "$LSUSB" | grep -qi "1915:520f"; then
     warn "Dongle running the nRF Sniffer firmware (1915:520f)"
     echo "    appuie sur RESET pour revenir en bootloader, puis reflash"
 
-elif echo "$LSUSB" | grep -qi "2fe3:0001"; then
-    ok "Dongle in Zephyr HCI USB mode (2fe3:0001)"
+elif echo "$LSUSB" | grep -qi "2fe3:000b"; then
+    ok "Dongle in Zephyr HCI USB mode (2fe3:000b)"
     echo "    il doit apparaitre comme un adaptateur Bluetooth normal"
+
+elif echo "$LSUSB" | grep -qi "2fe3:"; then
+    ok "Dongle running a Zephyr application (2fe3:xxxx)"
+    echo "    CDC ACM seul : c'est une appli Zephyr, pas hci_usb"
+    echo "    la carte initialise le CDC ACM au boot, donc l'USB peut"
+    echo "    enumerer meme si main() ne tourne pas"
 
 elif echo "$LSUSB" | grep -qi "239a:"; then
     ok "Dongle running CircuitPython (239a:xxxx)"
@@ -49,7 +51,6 @@ else
     exit 1
 fi
 
-# si le dongle expose un adaptateur Bluetooth, on l'affiche
 echo ""
 echo "=== Bluetooth adapters ==="
 if command -v hciconfig >/dev/null 2>&1; then

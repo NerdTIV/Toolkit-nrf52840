@@ -1,8 +1,4 @@
 #!/usr/bin/env python3
-# Run a CircuitPython program in RAM, sans l'ecrire sur la board.
-# Pratique pour debug : on modifie, on relance, pas de copie de fichier.
-#
-# Usage : python3 repl_run.py program.py
 
 import sys
 import time
@@ -27,18 +23,14 @@ def read_all():
     return s.read(n)
 
 
-# Ctrl-C : stop ce qui tourne
 s.write(b"\r\x03\x03")
 time.sleep(0.3)
 read_all()
 
-# Ctrl-E : paste mode, on peut coller plusieurs lignes d'un coup
 s.write(b"\x05")
 time.sleep(0.3)
 read_all()
 
-# pas de flow control en paste mode : si on envoie tout d'un coup la board
-# suit pas et perd la fin. Du coup petits chunks + une pause.
 data = code.replace("\n", "\r\n").encode()
 for i in range(0, len(data), 48):
     s.write(data[i:i + 48])
@@ -46,7 +38,7 @@ for i in range(0, len(data), 48):
     time.sleep(0.03)
 
 time.sleep(0.3)
-s.write(b"\x04")   # Ctrl-D : run
+s.write(b"\x04")
 
 print("[*] program started, output en direct (Ctrl-C to quit)")
 try:

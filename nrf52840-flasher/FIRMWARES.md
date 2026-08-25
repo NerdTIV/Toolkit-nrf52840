@@ -12,7 +12,7 @@ is running.
 |---|---|---|---|
 | **Nordic Open DFU bootloader** | receiving the other firmwares | `1915:521f` | [nRF Connect SDK](https://www.nordicsemi.com/Products/Development-software/nRF-Connect-SDK) |
 | **CircuitPython** | scripting BLE in Python on the dongle | `239a:xxxx` | [circuitpython.org](https://circuitpython.org/board/nordic_nrf52840_dongle/) |
-| **Zephyr `hci_usb`** | turning the dongle into a standard BT adapter (`hciN`) | `2fe3:0001` | [Zephyr sample](https://docs.zephyrproject.org/latest/samples/bluetooth/hci_usb/README.html) |
+| **Zephyr `hci_usb`** | turning the dongle into a standard BT adapter (`hciN`) | `2fe3:000b` | [Zephyr sample](https://docs.zephyrproject.org/latest/samples/bluetooth/hci_usb/README.html) |
 | **nRF Sniffer** | capturing BLE traffic in Wireshark | `1915:520f` | [Nordic nRF Sniffer for BLE](https://www.nordicsemi.com/Products/Development-tools/nRF-Sniffer-for-Bluetooth-LE) |
 | **Your own firmware** | whatever you want | depends on the build | [`../zephyr-ble-peripheral/`](../zephyr-ble-peripheral/) |
 

@@ -1,10 +1,4 @@
 #!/usr/bin/env python3
-# Flash a nRF52840 dongle with a Nordic DFU package (.zip).
-# Usage : sudo python3 flash_nrf52840.py firmware.zip
-#
-# J'ai commence avec pyserial et j'ai galere : quand on ferme le port, cdc_acm
-# met DTR a 0 et le bootloader se fige au milieu du flash. Avec pyusb on parle
-# direct aux endpoints bulk et on ne touche jamais DTR. Depuis ca marche.
 
 import sys
 import os
@@ -27,7 +21,6 @@ SLIP_ESC = 0xDB
 SLIP_ESC_END = 0xDC
 SLIP_ESC_ESC = 0xDD
 
-# opcodes du DFU Nordic v2
 OP_CREATE = 0x01
 OP_SET_PRN = 0x02
 OP_CALC_CRC = 0x03
@@ -40,11 +33,9 @@ OP_RESPONSE = 0x60
 OBJ_COMMAND = 0x01
 OBJ_DATA = 0x02
 
-VID = 0x1915        # le dongle quand il est en bootloader
+VID = 0x1915
 PID = 0x521F
 
-# taille des chunks. J'ai teste 64 et 32, ca sautait des paquets. 20 c'est lent
-# mais je n'ai plus jamais eu de flash rate.
 CHUNK = 20
 
 
@@ -90,15 +81,13 @@ class Dongle:
         self.dev = None
         self.ep_out = None
         self.ep_in = None
-        self.buf = bytearray()   # data lue mais pas encore parsee
+        self.buf = bytearray()
 
     def open(self):
         self.dev = usb.core.find(idVendor=VID, idProduct=PID)
         if self.dev is None:
             raise RuntimeError("DFU dongle (1915:521f) not found")
 
-        # un reset pour repartir sur du propre, des fois il reste des trucs
-        # dans les buffers d'un essai precedent
         try:
             self.dev.reset()
             time.sleep(1.5)
@@ -108,7 +97,6 @@ class Dongle:
         if self.dev is None:
             raise RuntimeError("dongle gone after reset")
 
-        # faut detacher le driver kernel sinon il garde la main sur le device
         for i in (0, 1):
             try:
                 if self.dev.is_kernel_driver_active(i):
@@ -119,9 +107,6 @@ class Dongle:
         self.dev.set_configuration()
         conf = self.dev.get_active_configuration()
 
-        # en CDC-ACM l'interface 0 c'est le control et la 1 c'est la data.
-        # Les endpoints bulk devraient etre sur la 1 mais j'ai vu des dongles
-        # ou c'etait la 0, du coup je teste les deux.
         for num in (1, 0):
             try:
                 intf = conf[(num, 0)]
@@ -145,7 +130,6 @@ class Dongle:
         if self.ep_out is None or self.ep_in is None:
             raise RuntimeError("bulk endpoints not found")
 
-        # DTR a 1. Sur certains bootloaders sans ca on n'a aucune reponse.
         try:
             self.dev.ctrl_transfer(0x21, 0x22, 0x01, 0, None, timeout=1000)
         except Exception:
@@ -155,9 +139,6 @@ class Dongle:
         self.flush()
 
     def flush(self):
-        # Le bootloader ne vide sa queue que quand on lui envoie une commande.
-        # Du coup on lui balance des PING jusqu'a ce qu'il ne reponde plus rien.
-        # 15 essais c'est large, en pratique 2 ou 3 suffisent.
         count = 0
         while count < 15:
             try:
@@ -181,7 +162,6 @@ class Dongle:
         self.buf = bytearray()
 
     def write(self, data):
-        # 64 c'est le max d'un bulk transfer en full speed
         i = 0
         while i < len(data):
             self.ep_out.write(data[i:i + 64], timeout=5000)
@@ -198,8 +178,6 @@ class Dongle:
                 pass
 
     def close(self):
-        # surtout ne pas remettre DTR a 0 ici, c'est exactement ce qui freeze
-        # le bootloader
         try:
             usb.util.dispose_resources(self.dev)
         except Exception:
@@ -212,14 +190,13 @@ class Dongle:
 
 
 def get_frame(dongle):
-    # sort une frame SLIP du buffer, None s'il n'y en a pas encore de complete
     frame = bytearray()
     i = 0
     while i < len(dongle.buf):
         b = dongle.buf[i]
         if b == SLIP_END:
             if len(frame) > 0:
-                dongle.buf = dongle.buf[i:]   # on garde le 0xC0 pour la suivante
+                dongle.buf = dongle.buf[i:]
                 return slip_decode(bytes(frame))
         else:
             frame.append(b)
@@ -232,11 +209,6 @@ def send(dongle, data):
 
 
 def send_cmd(dongle, op, data, timeout=8.0):
-    # Truc chelou du bootloader : il repond en decale. Quand on lui envoie une
-    # commande, il renvoie la reponse de la commande d'avant. J'ai mis un bon
-    # moment a comprendre pourquoi mes reponses etaient toujours en retard.
-    # La solution : on envoie la commande, puis un PING bidon juste pour faire
-    # sortir la vraie reponse.
     dongle.buf = bytearray()
     dongle.read_some(0.1)
     dongle.buf = bytearray()
@@ -251,7 +223,6 @@ def send_cmd(dongle, op, data, timeout=8.0):
         dongle.read_some(0.3)
         frame = get_frame(dongle)
         while frame is not None:
-            # une reponse fait au moins 3 bytes : 0x60, l'opcode, le result
             if len(frame) >= 3 and frame[0] == OP_RESPONSE and frame[1] == op:
                 if frame[2] != 0x01:
                     raise RuntimeError("DFU error %#x on opcode %#x" % (frame[2], op))
@@ -266,7 +237,6 @@ def crc32(data):
 
 
 def read_zip(path):
-    # un package DFU c'est un manifest.json qui pointe vers un .dat et un .bin
     z = zipfile.ZipFile(path)
     manifest = json.loads(z.read("manifest.json"))["manifest"]
 
@@ -274,8 +244,6 @@ def read_zip(path):
     dat = infos.get("dat_file")
     bin_file = infos.get("bin_file")
 
-    # si ce n'est pas une "application" (softdevice, bootloader...) on cherche
-    # dans les autres cles
     if not dat or not bin_file:
         for val in manifest.values():
             if isinstance(val, dict) and val.get("dat_file"):
@@ -310,9 +278,6 @@ def send_object(dongle, data, obj_type, name, already_sent=0, total=None):
     if total:
         print()
 
-    # apres les writes le dongle ecrit en flash, il ne repond pas tout de suite.
-    # TODO : 20 essais c'est au pif, ca serait mieux de calculer l'attente a
-    # partir de la taille du segment.
     answer = None
     time.sleep(1.0)
     try_nb = 0
@@ -341,7 +306,6 @@ def do_flash(zip_path):
     dongle.open()
     print("[+] dongle open")
 
-    # on ping d'abord pour verifier qu'il est vivant
     ok = False
     tries = 0
     while tries < 10:
@@ -357,12 +321,10 @@ def do_flash(zip_path):
         raise TimeoutError("dongle does not answer the PING")
     print("[+] ping ok")
 
-    # PRN a 0 : on ne veut pas de notif de progression, on gere nous memes
     send(dongle, bytes([OP_SET_PRN, 0x00, 0x00]))
     time.sleep(0.2)
     dongle.flush()
 
-    # 1) l'init packet, c'est les metadata signees du firmware
     print("\n[*] sending init packet...")
     send_cmd(dongle, OP_SELECT, bytes([OP_SELECT, OBJ_COMMAND]))
     offset, crc_got = send_object(dongle, init, OBJ_COMMAND, "init")
@@ -372,7 +334,6 @@ def do_flash(zip_path):
     send_cmd(dongle, OP_EXECUTE, bytes([OP_EXECUTE]), timeout=5.0)
     print("[+] init packet ok")
 
-    # 2) le firmware, decoupe en segments
     print("\n[*] sending firmware...")
     answer = send_cmd(dongle, OP_SELECT, bytes([OP_SELECT, OBJ_DATA]))
     max_size, start_at, crc_ignore = struct.unpack("<III", answer[:12])
@@ -389,14 +350,10 @@ def do_flash(zip_path):
         offset, crc_got = send_object(dongle, segment, OBJ_DATA, "firmware",
                                       already_sent=start, total=len(firmware))
 
-        # si le CRC ne tombe pas juste on renvoie le meme segment
         if offset < end or crc_got != crc32(firmware[:end]):
             print("    bad CRC, sending the segment again")
             continue
 
-        # EXECUTE c'est l'ecriture en flash. Des fois l'USB coupe pendant, ca
-        # arrivait tout le temps dans ma VM. Ce n'est pas grave, le segment est
-        # deja valide cote dongle, donc on ignore l'erreur.
         try:
             send_cmd(dongle, OP_EXECUTE, bytes([OP_EXECUTE]), timeout=10.0)
         except TimeoutError:

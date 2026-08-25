@@ -48,6 +48,14 @@ One catch that took a while to find: the bootloader answers with a **one
 command delay**. Sending a command returns the response of the *previous* one.
 So every command is followed by a dummy PING, just to flush the real answer out.
 
+Three more things that are easy to get wrong:
+
+- The bulk endpoints are on interface 1 on most dongles, but I have seen 0.
+  The script tries both.
+- DTR has to be set to 1 first. Some bootloaders answer nothing without it.
+- Never put DTR back to 0 when closing. That is exactly what freezes the
+  bootloader, and it is why closing a serial port kills a flash.
+
 ## Limitations
 
 Only tested against the Nordic Open DFU bootloader on a PCA10059. Data is sent
@@ -58,6 +66,12 @@ here.
 
 - `flash_nrf52840.py`: the flasher
 - `check_dongle.sh`: shows the dongle state (bootloader, sniffer, HCI, CircuitPython)
+
+## When it does not work
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md): package formats the bootloader
+refuses, the wedge that only a power cycle clears, and why a dongle can
+enumerate on USB while its application never ran.
 
 ## Firmwares
 
