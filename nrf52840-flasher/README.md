@@ -7,9 +7,10 @@ directly to the bootloader over USB.
 - Avoids the `cdc_acm` DTR freeze that kills a flash halfway through
 - `check_dongle.sh` tells you which mode the dongle is in
 
-## Why not nrfutil
+## Why not nrfutil to send it
 
-`nrfutil` works, but it goes through a serial port (`/dev/ttyACM0`). When that
+Use `nrfutil` to *build* the package, see below. It is the *sending* it does
+that is the problem : it goes through a serial port (`/dev/ttyACM0`). When that
 port closes, the kernel `cdc_acm` driver drops **DTR to 0**, and the DFU
 bootloader freezes. The flash stops halfway and you start over. It is worse in
 a VM, where USB drops on its own during flash writes.
