@@ -31,9 +31,7 @@ Nordic's `nrfutil` :
 
 ```bash
 nrfutil keys generate priv.pem
-nrfutil pkg generate --hw-version 52 --sd-req 0x00 \
-    --application app.hex --application-version 1 \
-    --key-file priv.pem firmware.zip
+nrfutil pkg generate --hw-version 52 --sd-req 0x00 --application app.hex --application-version 1 --key-file priv.pem firmware.zip
 
 sudo python3 nrf52840-flasher/flash_nrf52840.py firmware.zip
 ```
