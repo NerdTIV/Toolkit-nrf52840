@@ -49,25 +49,40 @@ Two things that break the build:
 The PCA10059 has no onboard debugger, so `west flash` is not an option. It goes
 through the Nordic Open DFU bootloader.
 
-Press **RESET** (the red LED pulses, the dongle shows up as `1915:521f` in
-`lsusb`), then package the `.hex` and flash it:
+Press **RESET** first : the red LED pulses and the dongle shows up as
+`1915:521f` in `lsusb`.
+
+The easy way is **nRF Connect Programmer**. It takes the `.hex` directly and
+builds the DFU package itself, so there is nothing to prepare. Add the file,
+Write, done. One thing to know : turn **Auto read memory** off before you
+select the device, otherwise it freezes the bootloader before you ever press
+Write. See [TROUBLESHOOTING.md](../nrf52840-flasher/TROUBLESHOOTING.md).
+
+To do it from the command line you have to build the package yourself, and it
+has to be a **DFU v2** package. Use Nordic's `nrfutil`, not
+`adafruit-nrfutil` : the Adafruit one writes legacy packages for the Adafruit
+bootloader, and this dongle has the Nordic Open DFU bootloader, which cannot
+parse them. It answers nothing and the flash dies on `OP_SELECT`.
 
 ```bash
-adafruit-nrfutil dfu genpkg --dev-type 0x0052 \
-    --application build/zephyr/zephyr.hex fw.zip
+nrfutil keys generate priv.pem
 
-adafruit-nrfutil dfu serial -pkg fw.zip -p /dev/ttyACM0 -b 115200
+nrfutil pkg generate --hw-version 52 --sd-req 0x00 \
+    --application build/zephyr/zephyr.hex --application-version 1 \
+    --key-file priv.pem fw.zip
 ```
 
-Or with the flasher from this repo, which avoids the serial DTR problem, see
-[`../nrf52840-flasher/`](../nrf52840-flasher/):
+The Open DFU bootloader does not check the signature against anything, so any
+key you generate works. On the newer Rust `nrfutil` the same command lives
+under `nrfutil nrf5sdk-tools pkg generate ...`, after
+`nrfutil install nrf5sdk-tools`.
+
+Then flash it, with the flasher from this repo which avoids the serial DTR
+problem, see [`../nrf52840-flasher/`](../nrf52840-flasher/):
 
 ```bash
 sudo python3 ../nrf52840-flasher/flash_nrf52840.py fw.zip
 ```
-
-`--dev-type 0x0052` is the nRF52840. Without it the bootloader rejects the
-package.
 
 ## Logs
 

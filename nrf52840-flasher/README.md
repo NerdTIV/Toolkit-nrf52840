@@ -33,6 +33,29 @@ sudo python3 flash_nrf52840.py firmware.zip
 Root is required to detach the kernel driver. To put the dongle in bootloader
 mode, press **RESET**: the LED starts pulsing red.
 
+## Building the .zip
+
+This bootloader wants a **DFU v2** package, protobuf init packet, signed.
+Build it with Nordic's `nrfutil` :
+
+```bash
+nrfutil keys generate priv.pem
+
+nrfutil pkg generate --hw-version 52 --sd-req 0x00 \
+    --application app.hex --application-version 1 \
+    --key-file priv.pem firmware.zip
+```
+
+Any key works, the Open DFU bootloader does not check the signature against
+anything. On the newer Rust `nrfutil` it is
+`nrfutil nrf5sdk-tools pkg generate ...` after
+`nrfutil install nrf5sdk-tools`.
+
+**Do not use `adafruit-nrfutil dfu genpkg`.** It writes legacy packages for
+the Adafruit bootloader. This one cannot parse them, answers nothing, and the
+flash dies on `OP_SELECT` with no error worth reading. See
+[TROUBLESHOOTING.md](TROUBLESHOOTING.md) for how to tell the two apart.
+
 ## How it works
 
 Nordic DFU protocol, version 2:
